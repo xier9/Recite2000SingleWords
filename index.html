@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#126c6a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="99單字" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>國中 99 單字</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=2" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">國中 2000 單字</p>
+          <h1>99 單字練習</h1>
+        </div>
+        <button class="icon-button" id="shuffleBtn" aria-label="隨機排序" title="隨機排序">↻</button>
+      </header>
+
+      <nav class="tabs" aria-label="學習模式">
+        <button class="tab active" data-view="learn">學習</button>
+        <button class="tab" data-view="review">複習</button>
+        <button class="tab" data-view="quiz">測驗</button>
+      </nav>
+
+      <main>
+        <section class="stats-grid" aria-label="學習進度">
+          <div>
+            <span id="learnedCount">0</span>
+            <p>已會</p>
+          </div>
+          <div>
+            <span id="hardCount">0</span>
+            <p>加強</p>
+          </div>
+          <div>
+            <span id="currentRange">1-5</span>
+            <p>目前組別</p>
+          </div>
+        </section>
+
+        <section class="view active" id="learnView" aria-labelledby="learnTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="learnTitle">一次 5 個</h2>
+              <p id="groupLabel">第 1 組</p>
+            </div>
+            <div class="button-row">
+              <label class="group-select-label" for="groupSelect">
+                <span>跳到</span>
+                <select id="groupSelect" aria-label="跳到特定組別"></select>
+              </label>
+              <button class="ghost-button" id="prevGroupBtn">上一組</button>
+              <button class="primary-button" id="nextGroupBtn">下一組</button>
+            </div>
+          </div>
+          <div class="word-grid" id="wordGrid"></div>
+        </section>
+
+        <section class="view" id="reviewView" aria-labelledby="reviewTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="reviewTitle">翻卡複習</h2>
+              <p id="reviewQueueLabel">依照尚未熟悉與加強單字排序</p>
+            </div>
+            <button class="ghost-button" id="resetBtn">重設進度</button>
+          </div>
+          <article class="review-card" id="reviewCard">
+            <button class="sound-chip" id="reviewSpeakBtn">播放單字</button>
+            <div class="review-face" id="reviewFace"></div>
+          </article>
+          <div class="review-actions">
+            <button class="danger-button" id="hardBtn">加強</button>
+            <button class="ghost-button" id="flipBtn">翻面</button>
+            <button class="success-button" id="knowBtn">已會</button>
+          </div>
+        </section>
+
+        <section class="view" id="quizView" aria-labelledby="quizTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="quizTitle">選擇測驗</h2>
+              <p id="quizProgress">第 1 題</p>
+            </div>
+            <button class="ghost-button" id="newQuizBtn">新題目</button>
+          </div>
+          <article class="quiz-panel">
+            <button class="sound-chip" id="quizSpeakBtn">播放題目</button>
+            <p class="quiz-word" id="quizWord"></p>
+            <div class="choices" id="choices"></div>
+            <p class="feedback" id="feedback" aria-live="polite"></p>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js?v=2" defer></script>
+  </body>
+</html>
