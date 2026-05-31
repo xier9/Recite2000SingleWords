@@ -80,7 +80,6 @@ h2 {
   font-size: 1.35rem;
 }
 
-.home-link,
 .primary-button,
 .ghost-button,
 .success-button,
@@ -91,15 +90,6 @@ h2 {
   border-radius: 8px;
   padding: 0 14px;
   font-weight: 850;
-}
-
-.home-link {
-  display: inline-flex;
-  align-items: center;
-  background: var(--panel);
-  color: var(--teal);
-  text-decoration: none;
-  box-shadow: var(--shadow);
 }
 
 .tabs {
@@ -368,6 +358,11 @@ h2 {
   font-weight: 950;
   line-height: 1;
   overflow-wrap: anywhere;
+}
+
+.review-answer-word {
+  text-align: center;
+  font-size: clamp(2rem, 9vw, 4.4rem);
 }
 
 .review-detail {

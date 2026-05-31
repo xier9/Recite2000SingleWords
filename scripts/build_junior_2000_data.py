@@ -150,44 +150,253 @@ def quote_term(term):
     return f'"{term}"'
 
 
+def starts_with_vowel_sound(term):
+    return term[:1].lower() in {"a", "e", "i", "o", "u"}
+
+
+def with_article(term):
+    if " " in term or term.endswith("s") or term[:1].isupper():
+        return f"the {term}"
+    article = "an" if starts_with_vowel_sound(term) else "a"
+    return f"{article} {term}"
+
+
+def noun_phrase(term):
+    lower = term.lower()
+    if lower in {"i", "you", "he", "she", "it", "we", "they"}:
+        return term
+    if term[:1].isupper() or "day" in lower or lower in {"today", "tonight", "tomorrow", "yesterday"}:
+        return term
+    return with_article(lower)
+
+
+def preposition_example(lower):
+    examples = {
+        "about": "We had a serious discussion about the school project.",
+        "above": "The sign above the door tells visitors where to go.",
+        "across": "After we walked across the bridge, the station was easy to find.",
+        "after": "After dinner, I reviewed the words that I had missed.",
+        "against": "The ladder was leaning against the wall when I arrived.",
+        "along": "We picked up trash along the river because the park was crowded.",
+        "among": "Among all the choices, this answer seems the most reasonable.",
+        "at": "I will meet you at the library when the class ends.",
+        "before": "Before the test began, the teacher explained the rules.",
+        "behind": "The notebook that I lost was behind the computer.",
+        "below": "The temperature fell below ten degrees, so we wore coats.",
+        "beside": "She sat beside her brother while they were waiting.",
+        "between": "The answer is between the two numbers on the chart.",
+        "beyond": "The village beyond the hill is famous for its old temple.",
+        "by": "The report was written by a student who loves science.",
+        "down": "He ran down the stairs after he heard the bell.",
+        "during": "During the meeting, everyone listened carefully.",
+        "except": "Everyone finished the homework except one student.",
+        "for": "This message is for anyone who needs extra practice.",
+        "from": "I borrowed a dictionary from the library yesterday.",
+        "in": "The keys were in the drawer that was beside the bed.",
+        "in back of": "The bicycles are in back of the classroom building.",
+        "in front of": "Please wait in front of the station after school.",
+        "inside": "The letter was inside the envelope that I found.",
+        "into": "The teacher divided the class into four small groups.",
+        "like": "This fruit tastes like the mangoes we ate last summer.",
+        "near": "The apartment near the park is quiet at night.",
+        "of": "The cover of the book was damaged by the rain.",
+        "off": "Please turn off the light before you leave.",
+        "on": "The schedule on the wall shows every activity.",
+        "out of": "She took the ticket out of her pocket before boarding.",
+        "outside": "We waited outside the museum until it opened.",
+        "over": "A plane flew over the city while we were walking.",
+        "next to": "The bakery next to the bank sells fresh bread.",
+        "since": "I have known him since we were in elementary school.",
+        "than": "This route is faster than the one we took yesterday.",
+        "through": "Sunlight came through the window and warmed the room.",
+        "to": "We walked to the bus stop because the weather was nice.",
+        "toward": "The dog ran toward its owner as soon as it heard her voice.",
+        "under": "The cat slept under the table while we studied.",
+        "until": "I practiced until I could pronounce the sentence clearly.",
+        "up": "She climbed up the hill although she was tired.",
+        "with": "He solved the problem with a method that he learned in class.",
+        "without": "You cannot finish the project without careful planning.",
+    }
+    return examples.get(lower, f"The phrase uses {quote_term(lower)} to show the relationship between two ideas.")
+
+
+def conjunction_example(lower):
+    examples = {
+        "and": "I checked the answer and explained why it was correct.",
+        "because": "She stayed after class because she wanted to ask another question.",
+        "besides": "Besides learning new words, we practiced how to use them in sentences.",
+        "but": "The word looks easy, but it can be difficult to use correctly.",
+        "however": "The first answer sounded right; however, the second one was more accurate.",
+        "if": "If you review a little every day, the test will feel less stressful.",
+        "or": "You can write an example sentence or say it aloud.",
+        "since": "Since the lesson was important, I copied the notes carefully.",
+        "than": "This sentence is clearer than the one I wrote before.",
+        "therefore": "He practiced every night; therefore, his pronunciation improved.",
+        "though": "Though the word was unfamiliar, I guessed its meaning from the context.",
+        "while": "While my sister was reading, I was reviewing vocabulary.",
+        "whether": "The teacher asked whether we understood the difference.",
+        "nor": "He did not complain, nor did he stop trying.",
+        "either": "If you do not know the answer, I do not know it either.",
+    }
+    return examples.get(lower, f"I used {quote_term(lower)} to connect two ideas in one sentence.")
+
+
+def pronoun_example(term):
+    lower = term.lower()
+    examples = {
+        "i": "I finished the worksheet before the bell rang.",
+        "me": "The teacher asked me to read the sentence aloud.",
+        "my": "My notebook has examples that help me review.",
+        "mine": "This pencil is mine, but you may borrow it.",
+        "myself": "I checked the answer myself before asking for help.",
+        "you": "You should explain the reason, not just choose an answer.",
+        "your": "Your sentence will be stronger if you add more details.",
+        "yours": "This dictionary is yours, so please keep it on your desk.",
+        "yourself": "Try to correct the mistake yourself first.",
+        "yourselves": "You should prepare yourselves before the final test.",
+        "he": "He raised his hand because he knew the answer.",
+        "him": "I helped him understand the difficult paragraph.",
+        "his": "His example was clearer than mine.",
+        "himself": "He introduced himself before the interview began.",
+        "she": "She wrote a sentence that included a relative clause.",
+        "her": "The coach told her to practice after school.",
+        "hers": "The red umbrella is hers, not mine.",
+        "herself": "She taught herself how to pronounce the word.",
+        "it": "It became easier after we saw another example.",
+        "its": "The school changed its schedule because of the typhoon.",
+        "itself": "The machine turns itself off when it gets too hot.",
+        "we": "We compared our answers before the teacher explained them.",
+        "us": "The story reminded us that small choices matter.",
+        "our": "Our group presented the project after lunch.",
+        "ours": "The final decision was ours to make.",
+        "ourselves": "We prepared ourselves for a longer test.",
+        "they": "They discussed the problem until they found a solution.",
+        "them": "I put the cards on the table and mixed them.",
+        "their": "Their idea was creative, although it needed more detail.",
+        "theirs": "The books on the front desk are theirs.",
+        "themselves": "They introduced themselves politely to the visitors.",
+    }
+    if lower in examples:
+        return examples[lower]
+    return f"When writers use {quote_term(term)}, they replace or point to a noun in the sentence."
+
+
+def verb_phrase(term):
+    lower = term.lower()
+    phrases = {
+        "avoid": "avoid making the same mistake",
+        "feel": "feel more confident",
+        "hear": "hear the announcement clearly",
+        "listen": "listen to the speaker carefully",
+        "look": "look for clues in the paragraph",
+        "see": "see the difference between the two answers",
+        "smell": "smell the smoke before anyone saw the fire",
+        "sound": "sound confident during the presentation",
+        "taste": "taste the soup before adding more salt",
+        "watch": "watch the experiment from beginning to end",
+        "appear": "appear calm during the interview",
+        "become": "become more independent",
+        "belong": "belong to a group that shares the same goal",
+        "die": "die out if people stop using it",
+        "disappear": "disappear before anyone noticed",
+        "exist": "exist in more than one form",
+        "fall": "fall behind if we stop practicing",
+        "go": "go through the notes again",
+        "happen": "happen when people ignore the warning",
+        "lie": "lie on the grass and watch the clouds",
+        "rise": "rise slowly as the temperature increases",
+        "run": "run faster than we expected",
+        "seem": "seem easier after one clear example",
+        "sleep": "sleep well before an important test",
+        "stay": "stay focused until the work is finished",
+        "wait": "wait until everyone is ready",
+        "wake": "wake up before the alarm rings",
+        "walk": "walk across the bridge after school",
+        "live": "live in a city that has convenient transportation",
+        "grow": "grow stronger through regular practice",
+        "marry": "marry someone who respects their dreams",
+        "rain": "rain heavily during the afternoon",
+        "shine": "shine through the window in the morning",
+        "blow": "blow across the open field",
+        "arrive": "arrive before the meeting begins",
+        "land": "land safely after the long flight",
+        "sail": "sail across the lake on a windy day",
+    }
+    if lower in phrases:
+        return phrases[lower]
+    if " " in lower:
+        return lower
+    return f"{lower} the idea in a real situation"
+
+
 def example_for(item):
     term = item["word"]
     pos = item["partOfSpeechZh"]
     lower = term.lower()
+    index = item["id"] % 6
 
     if "介系詞" in pos:
-        return f"The notebook is {lower} the desk."
+        return preposition_example(lower)
     if "連接詞" in pos:
-        if lower == "and":
-            return "I like apples and bananas."
-        if lower == "or":
-            return "You can read or listen."
-        if lower == "nor":
-            return "He does not sing, nor does he dance."
-        if lower == "but":
-            return "It is small but useful."
-        if lower == "because":
-            return "I stayed home because it rained."
-        if lower == "if":
-            return "Call me if you need help."
-        return f"I paused, {lower} I wanted to think."
+        return conjunction_example(lower)
     if "代名詞" in pos:
-        return f"Please use {quote_term(term)} in your answer."
+        return pronoun_example(term)
     if "副詞" in pos:
+        if lower == "however":
+            return "The plan sounded simple; however, it required careful timing."
+        if lower == "therefore":
+            return "The evidence was clear; therefore, we changed our answer."
+        if lower == "either":
+            return "I did not understand the question either, so I asked for help."
         if lower in {"everywhere", "anywhere", "somewhere", "away", "abroad", "ahead"}:
-            return f"We looked {lower} for the answer."
-        return f"She speaks English {lower}."
+            return f"Although we looked {lower}, we still could not find the missing key."
+        if lower in {"always", "ever", "never", "often", "seldom", "sometimes", "usually"}:
+            return f"She {lower} reviews her notes before she goes to bed."
+        templates = [
+            f"She answered the question {lower} because she had prepared well.",
+            f"If you listen {lower}, you may notice the speaker's main point.",
+            f"The team worked {lower} until the project was finished.",
+            f"He spoke {lower}, which made the instructions easier to follow.",
+            f"After the bell rang, the students moved {lower} to the next room.",
+            f"The result was {lower} different from what we had expected.",
+        ]
+        return templates[index]
     if "形容詞" in pos:
-        return f"The story is {lower}."
+        noun = "situation" if "人" not in item["meaningZh"] else "person"
+        templates = [
+            f"Although the {noun} seemed {lower}, we tried to understand the reason.",
+            f"The answer became {lower} after the teacher added one example.",
+            f"If a task is {lower}, you should break it into smaller steps.",
+            f"The story was so {lower} that everyone wanted to discuss it.",
+            f"I chose a {lower} example because it matched the grammar pattern.",
+            f"When the room grew {lower}, the students began to speak more softly.",
+        ]
+        return templates[index]
     if "動詞" in pos:
-        if " " in lower:
-            return f"I want to {lower} after class."
-        return f"Please {lower} carefully."
+        phrase = verb_phrase(term)
+        templates = [
+            f"Although I wanted to {phrase} quickly, I slowed down and checked the details.",
+            f"The teacher asked us to {phrase} before we wrote our answers.",
+            f"If you can {phrase}, the word will be easier to remember.",
+            f"We learned how to {phrase} while we were practicing the dialogue.",
+            f"After they managed to {phrase}, the group made a clear plan.",
+            f"Please try to {phrase} so that everyone understands what you mean.",
+        ]
+        return templates[index]
     if "感嘆詞" in pos:
-        return f"{term}! That was a surprise."
+        return f"{term}! I did not expect the answer to be so surprising."
     if "冠詞" in pos:
-        return f"I saw {lower} bird in the tree."
-    return f"We talked about the {lower} today."
+        return f"I saw {lower} old picture that reminded me of our first lesson."
+    phrase = noun_phrase(term)
+    templates = [
+        f"Although {phrase} seemed simple at first, it helped us understand the whole topic.",
+        f"When we discussed {phrase}, the teacher asked us to give a more specific example.",
+        f"I compared {phrase} with another idea so that the difference would be clear.",
+        f"If you remember {phrase} in context, you will use the word more naturally.",
+        f"The report that mentioned {phrase} was easier to understand than I expected.",
+        f"After reading the paragraph, I wrote one sentence about {phrase}.",
+    ]
+    return templates[index]
 
 
 def study_hint(item):
@@ -233,7 +442,7 @@ def build_payload(entries, source_pdf):
                 "英文、詞性、中文意思由 PDF 表格抽取。",
                 "主題分類依 PDF 主題排序與學習情境重新命名，方便初學者分組記憶。",
                 "IPA 由英語發音字典批次產生，少數複合詞採人工校正。",
-                "例句為簡易學習例句，適合先匯入系統使用；正式教材可再人工潤稿。",
+                "例句以中等英文能力為目標，使用條件句、讓步句、關係子句、比較、結果與時間子句等句型。",
             ],
             "ipaNeedsReviewIds": needs_ipa_review,
         },

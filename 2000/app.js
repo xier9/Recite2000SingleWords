@@ -227,6 +227,7 @@ function renderReview() {
   els.reviewFace.innerHTML = state.reviewFlipped
     ? `
       <div class="review-detail">
+        <button class="word-button review-answer-word" data-speak="${esc(word.word)}">${esc(word.word)}</button>
         <div class="meaning">${esc(word.meaningZh)} <span>${esc(word.partOfSpeech)}</span></div>
         <p class="ipa">${esc(word.ipa)}</p>
         <button class="sentence-button" data-speak="${esc(word.exampleEn)}">${esc(word.exampleEn)}</button>
