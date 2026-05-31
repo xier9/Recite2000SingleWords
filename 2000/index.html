@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#126c6a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="2000單字" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>國中 2000 單字</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=1" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">國中單字王</p>
+          <h1>2000 單字練習</h1>
+        </div>
+        <a class="home-link" href="../">99 字版</a>
+      </header>
+
+      <nav class="tabs" aria-label="學習模式">
+        <button class="tab active" data-view="learn">學習</button>
+        <button class="tab" data-view="review">複習</button>
+        <button class="tab" data-view="quiz">測驗</button>
+      </nav>
+
+      <main>
+        <section class="stats-grid" aria-label="學習進度">
+          <div>
+            <span id="learnedCount">0</span>
+            <p>已會</p>
+          </div>
+          <div>
+            <span id="hardCount">0</span>
+            <p>加強</p>
+          </div>
+          <div>
+            <span id="activeCount">0</span>
+            <p>目前主題</p>
+          </div>
+        </section>
+
+        <section class="view active" id="learnView" aria-labelledby="learnTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="learnTitle">主題學習</h2>
+              <p id="learnSubtitle">依 30 個主題分類記憶，不限制每次字數。</p>
+            </div>
+            <label class="select-label" for="learnCategorySelect">
+              <span>主題</span>
+              <select id="learnCategorySelect"></select>
+            </label>
+          </div>
+          <div class="topic-strip" id="learnTopicList"></div>
+          <div class="word-grid" id="wordGrid" aria-live="polite"></div>
+        </section>
+
+        <section class="view" id="reviewView" aria-labelledby="reviewTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="reviewTitle">加強複習</h2>
+              <p id="reviewQueueLabel">以學習階段標注加強的單字為主。</p>
+            </div>
+            <label class="select-label" for="reviewCategorySelect">
+              <span>篩選</span>
+              <select id="reviewCategorySelect"></select>
+            </label>
+          </div>
+          <div class="topic-strip" id="reviewTopicList"></div>
+          <article class="review-card">
+            <button class="sound-chip" id="reviewSpeakBtn">播放</button>
+            <div class="review-face" id="reviewFace"></div>
+          </article>
+          <div class="review-actions">
+            <button class="danger-button" id="reviewKeepHardBtn">仍要加強</button>
+            <button class="ghost-button" id="flipBtn">翻面</button>
+            <button class="success-button" id="reviewKnowBtn">已會</button>
+          </div>
+        </section>
+
+        <section class="view" id="quizView" aria-labelledby="quizTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="quizTitle">測驗</h2>
+              <p id="quizProgress">從已會與加強單字隨機出題。</p>
+            </div>
+            <div class="quiz-controls">
+              <div class="segmented" role="group" aria-label="測驗模式">
+                <button class="segment active" data-quiz-mode="twenty">20 題</button>
+                <button class="segment" data-quiz-mode="continuous">連續</button>
+              </div>
+              <button class="primary-button" id="startQuizBtn">新測驗</button>
+            </div>
+          </div>
+          <article class="quiz-panel">
+            <div class="quiz-meta">
+              <button class="sound-chip" id="quizSpeakBtn">播放題目</button>
+              <span id="quizScore">0 分</span>
+            </div>
+            <p class="quiz-word" id="quizWord">載入中</p>
+            <div class="choices" id="choices"></div>
+            <p class="feedback" id="feedback" aria-live="polite"></p>
+            <div class="quiz-result hidden" id="quizResult">
+              <p id="resultText"></p>
+              <div class="button-row">
+                <button class="primary-button" id="shareLineBtn">分享結果給媽媽</button>
+                <button class="ghost-button" id="copyResultBtn">複製文字</button>
+              </div>
+            </div>
+          </article>
+
+          <section class="log-panel" aria-labelledby="logTitle">
+            <div class="section-head compact">
+              <div>
+                <h2 id="logTitle">20 題紀錄</h2>
+                <p>記錄分數與答錯單字。</p>
+              </div>
+              <button class="ghost-button" id="clearQuizLogBtn">清除紀錄</button>
+            </div>
+            <div id="quizLogList" class="log-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js?v=1" defer></script>
+  </body>
+</html>

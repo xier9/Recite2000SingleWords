@@ -1,14 +1,14 @@
-const CACHE_NAME = "recite-99-words-v7";
+const CACHE_NAME = "recite-2000-words-v1";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=2",
-  "./app.js?v=2",
+  "./styles.css?v=1",
+  "./app.js?v=1",
   "./manifest.webmanifest",
-  "./assets/icon.svg",
-  "./assets/icon-192.png",
-  "./assets/icon-512.png",
-  "./assets/apple-touch-icon.png",
+  "../data/junior-2000-vocabulary.json",
+  "../assets/icon-192.png",
+  "../assets/icon-512.png",
+  "../assets/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -21,7 +21,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key.startsWith("recite-99-words-") && key !== CACHE_NAME)
+          .filter((key) => key.startsWith("recite-2000-words-") && key !== CACHE_NAME)
           .map((key) => caches.delete(key)),
       ),
     ),

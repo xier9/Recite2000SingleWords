@@ -1,0 +1,513 @@
+const DATA_URL = "../data/junior-2000-vocabulary.json";
+const PROGRESS_KEY = "recite-2000-progress-v1";
+const QUIZ_LOG_KEY = "recite-2000-quiz-log-v1";
+
+const state = {
+  words: [],
+  categories: [],
+  activeLearnCategory: "",
+  activeReviewCategory: "all",
+  reviewIndex: 0,
+  reviewFlipped: false,
+  quizMode: "twenty",
+  quizQueue: [],
+  quizIndex: 0,
+  quizScore: 0,
+  quizWrong: [],
+  currentQuestion: null,
+  currentResultText: "",
+  progress: loadJson(PROGRESS_KEY, {}),
+  quizLog: loadJson(QUIZ_LOG_KEY, []),
+};
+
+const els = {
+  tabs: document.querySelectorAll(".tab"),
+  views: document.querySelectorAll(".view"),
+  learnedCount: document.querySelector("#learnedCount"),
+  hardCount: document.querySelector("#hardCount"),
+  activeCount: document.querySelector("#activeCount"),
+  learnCategorySelect: document.querySelector("#learnCategorySelect"),
+  reviewCategorySelect: document.querySelector("#reviewCategorySelect"),
+  learnTopicList: document.querySelector("#learnTopicList"),
+  reviewTopicList: document.querySelector("#reviewTopicList"),
+  wordGrid: document.querySelector("#wordGrid"),
+  learnSubtitle: document.querySelector("#learnSubtitle"),
+  reviewQueueLabel: document.querySelector("#reviewQueueLabel"),
+  reviewFace: document.querySelector("#reviewFace"),
+  reviewSpeakBtn: document.querySelector("#reviewSpeakBtn"),
+  reviewKeepHardBtn: document.querySelector("#reviewKeepHardBtn"),
+  reviewKnowBtn: document.querySelector("#reviewKnowBtn"),
+  flipBtn: document.querySelector("#flipBtn"),
+  quizProgress: document.querySelector("#quizProgress"),
+  quizScore: document.querySelector("#quizScore"),
+  quizWord: document.querySelector("#quizWord"),
+  quizSpeakBtn: document.querySelector("#quizSpeakBtn"),
+  choices: document.querySelector("#choices"),
+  feedback: document.querySelector("#feedback"),
+  startQuizBtn: document.querySelector("#startQuizBtn"),
+  quizResult: document.querySelector("#quizResult"),
+  resultText: document.querySelector("#resultText"),
+  shareLineBtn: document.querySelector("#shareLineBtn"),
+  copyResultBtn: document.querySelector("#copyResultBtn"),
+  clearQuizLogBtn: document.querySelector("#clearQuizLogBtn"),
+  quizLogList: document.querySelector("#quizLogList"),
+};
+
+function loadJson(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveProgress() {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(state.progress));
+}
+
+function saveQuizLog() {
+  localStorage.setItem(QUIZ_LOG_KEY, JSON.stringify(state.quizLog));
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]);
+}
+
+function getStatus(id) {
+  return state.progress[id] || { known: false, hard: false, seen: 0 };
+}
+
+function updateStatus(id, patch) {
+  const current = getStatus(id);
+  state.progress[id] = { ...current, ...patch };
+  saveProgress();
+  renderStats();
+}
+
+function wordById(id) {
+  return state.words.find((word) => word.id === id);
+}
+
+function wordsInCategory(categoryId) {
+  return state.words.filter((word) => word.categoryId === categoryId);
+}
+
+function hardWords(categoryId = "all") {
+  return state.words.filter((word) => getStatus(word.id).hard && (categoryId === "all" || word.categoryId === categoryId));
+}
+
+function quizPool() {
+  return state.words.filter((word) => {
+    const status = getStatus(word.id);
+    return status.known || status.hard;
+  });
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.voice = pickAmericanVoice();
+  utterance.rate = 0.88;
+  utterance.pitch = 0.9;
+  window.speechSynthesis.speak(utterance);
+}
+
+function pickAmericanVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = ["Aaron", "Reed", "Eddy", "Fred", "Daniel", "Alex", "Google US English", "Microsoft Guy"];
+  return (
+    preferred.map((name) => voices.find((voice) => voice.lang.startsWith("en-US") && voice.name.includes(name))).find(Boolean) ||
+    voices.find((voice) => voice.lang === "en-US") ||
+    voices.find((voice) => voice.lang.startsWith("en")) ||
+    null
+  );
+}
+
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function buildOptions() {
+  const categoryOptions = state.categories
+    .map((category) => {
+      const count = wordsInCategory(category.id).length;
+      return `<option value="${esc(category.id)}">${esc(category.nameZh)}（${count}）</option>`;
+    })
+    .join("");
+  els.learnCategorySelect.innerHTML = categoryOptions;
+  els.reviewCategorySelect.innerHTML = `<option value="all">全部加強</option>${categoryOptions}`;
+}
+
+function renderStats() {
+  const statuses = state.words.map((word) => getStatus(word.id));
+  const learned = statuses.filter((status) => status.known).length;
+  const hard = statuses.filter((status) => status.hard).length;
+  const active = state.activeLearnCategory ? wordsInCategory(state.activeLearnCategory).length : 0;
+  els.learnedCount.textContent = learned;
+  els.hardCount.textContent = hard;
+  els.activeCount.textContent = active;
+}
+
+function renderTopicList(container, activeCategory, type) {
+  const buttons = state.categories
+    .map((category) => {
+      const baseCount = type === "review" ? hardWords(category.id).length : wordsInCategory(category.id).length;
+      const active = activeCategory === category.id ? "active" : "";
+      return `<button class="topic-button ${active}" data-topic="${esc(category.id)}" data-topic-type="${type}">
+        ${esc(category.nameZh)} ${baseCount}
+      </button>`;
+    })
+    .join("");
+  container.innerHTML = buttons;
+}
+
+function renderLearn() {
+  const category = state.categories.find((item) => item.id === state.activeLearnCategory) || state.categories[0];
+  if (!category) return;
+  state.activeLearnCategory = category.id;
+  els.learnCategorySelect.value = category.id;
+  const words = wordsInCategory(category.id);
+  els.learnSubtitle.textContent = `${category.nameZh} · ${words.length} 個單字 · ${category.descriptionZh}`;
+  els.wordGrid.innerHTML = words.map(renderWordCard).join("");
+  words.forEach((word) => updateStatus(word.id, { seen: getStatus(word.id).seen + 1 }));
+  renderTopicList(els.learnTopicList, category.id, "learn");
+  renderStats();
+}
+
+function renderWordCard(word) {
+  const status = getStatus(word.id);
+  return `
+    <article class="word-card">
+      <div class="card-top">
+        <span class="number">#${word.id}</span>
+        <button class="mini-button" data-speak="${esc(word.word)}" aria-label="播放 ${esc(word.word)}">▶</button>
+      </div>
+      <button class="word-button" data-speak="${esc(word.word)}">${esc(word.word)}</button>
+      <div class="ipa">${esc(word.ipa)}</div>
+      <div class="meaning">${esc(word.meaningZh)} <span>${esc(word.partOfSpeech)}</span></div>
+      <p class="meta">${esc(word.categoryNameZh)}</p>
+      <button class="sentence-button" data-speak="${esc(word.exampleEn)}">${esc(word.exampleEn)}</button>
+      <div class="card-actions">
+        <button class="${status.hard ? "active" : ""}" data-mark-hard="${word.id}">加強</button>
+        <button class="${status.known ? "active" : ""}" data-mark-known="${word.id}">已會</button>
+      </div>
+    </article>
+  `;
+}
+
+function reviewQueue() {
+  return hardWords(state.activeReviewCategory);
+}
+
+function renderReview() {
+  renderTopicList(els.reviewTopicList, state.activeReviewCategory, "review");
+  els.reviewCategorySelect.value = state.activeReviewCategory;
+  const queue = reviewQueue();
+  if (!queue.length) {
+    els.reviewQueueLabel.textContent = "目前沒有這個主題的加強單字。";
+    els.reviewFace.innerHTML = `<p class="meaning">先到學習頁把不熟的字標注為「加強」。</p>`;
+    return;
+  }
+  state.reviewIndex %= queue.length;
+  const word = queue[state.reviewIndex];
+  els.reviewQueueLabel.textContent = `${word.categoryNameZh} · ${state.reviewIndex + 1}/${queue.length}`;
+  els.reviewFace.innerHTML = state.reviewFlipped
+    ? `
+      <div class="review-detail">
+        <div class="meaning">${esc(word.meaningZh)} <span>${esc(word.partOfSpeech)}</span></div>
+        <p class="ipa">${esc(word.ipa)}</p>
+        <button class="sentence-button" data-speak="${esc(word.exampleEn)}">${esc(word.exampleEn)}</button>
+      </div>
+    `
+    : `<button class="word-button review-word" data-speak="${esc(word.word)}">${esc(word.word)}</button>`;
+}
+
+function startQuiz() {
+  const pool = quizPool();
+  state.quizWrong = [];
+  state.quizScore = 0;
+  state.quizIndex = 0;
+  els.quizResult.classList.add("hidden");
+  els.feedback.textContent = "";
+  if (!pool.length) {
+    state.currentQuestion = null;
+    els.quizWord.textContent = "先在學習頁標注已會或加強的單字";
+    els.choices.innerHTML = "";
+    els.quizProgress.textContent = "尚未有測驗字庫";
+    els.quizScore.textContent = "0 分";
+    return;
+  }
+  if (state.quizMode === "twenty") {
+    const queue = [];
+    while (queue.length < 20) queue.push(...shuffle(pool));
+    state.quizQueue = queue.slice(0, 20);
+  } else {
+    state.quizQueue = shuffle(pool);
+  }
+  showQuestion();
+}
+
+function showQuestion() {
+  const pool = quizPool();
+  if (!pool.length) return;
+  if (state.quizMode === "continuous" && state.quizIndex >= state.quizQueue.length) {
+    state.quizQueue = shuffle(pool);
+    state.quizIndex = 0;
+  }
+  const word = state.quizQueue[state.quizIndex];
+  state.currentQuestion = word;
+  const choices = shuffle([word, ...shuffle(state.words.filter((item) => item.id !== word.id)).slice(0, 3)]);
+  els.quizWord.textContent = word.word;
+  els.quizProgress.textContent =
+    state.quizMode === "twenty" ? `20 題測驗 · 第 ${state.quizIndex + 1}/20 題` : `連續練習 · 第 ${state.quizIndex + 1} 題`;
+  els.quizScore.textContent = state.quizMode === "twenty" ? `${state.quizScore} 分` : "練習中";
+  els.choices.innerHTML = choices
+    .map((choice) => `<button class="choice" data-choice="${choice.id}">${esc(choice.meaningZh)} ${esc(choice.partOfSpeech)}</button>`)
+    .join("");
+  els.feedback.textContent = "";
+}
+
+function answerQuiz(choiceId) {
+  const word = state.currentQuestion;
+  if (!word) return;
+  const correct = choiceId === word.id;
+  document.querySelectorAll(".choice").forEach((button) => {
+    const id = Number(button.dataset.choice);
+    button.disabled = true;
+    if (id === word.id) button.classList.add("correct");
+    if (id === choiceId && !correct) button.classList.add("wrong");
+  });
+  if (correct) {
+    els.feedback.textContent = "答對了";
+    if (state.quizMode === "twenty") state.quizScore += 5;
+    updateStatus(word.id, { known: true, hard: false });
+  } else {
+    els.feedback.textContent = `再看一次：${word.meaningZh}`;
+    state.quizWrong.push(word);
+    updateStatus(word.id, { hard: true, known: false });
+  }
+  window.setTimeout(nextQuizStep, 850);
+}
+
+function nextQuizStep() {
+  if (state.quizMode === "twenty" && state.quizIndex >= 19) {
+    finishTwentyQuiz();
+    return;
+  }
+  state.quizIndex += 1;
+  showQuestion();
+}
+
+function finishTwentyQuiz() {
+  const uniqueWrong = [...new Map(state.quizWrong.map((word) => [word.id, word])).values()];
+  const log = {
+    id: Date.now(),
+    date: new Date().toLocaleString("zh-TW", { hour12: false }),
+    score: state.quizScore,
+    wrong: uniqueWrong.map((word) => ({
+      id: word.id,
+      word: word.word,
+      meaningZh: word.meaningZh,
+      categoryNameZh: word.categoryNameZh,
+    })),
+  };
+  state.quizLog.unshift(log);
+  state.quizLog = state.quizLog.slice(0, 50);
+  saveQuizLog();
+  state.currentResultText = buildResultText(log);
+  els.quizScore.textContent = `${state.quizScore} 分`;
+  els.quizProgress.textContent = "20 題測驗完成";
+  els.quizWord.textContent = `${state.quizScore} / 100`;
+  els.choices.innerHTML = "";
+  els.feedback.textContent = uniqueWrong.length ? `答錯 ${uniqueWrong.length} 個單字` : "全部答對";
+  els.resultText.textContent = state.currentResultText;
+  els.quizResult.classList.remove("hidden");
+  renderQuizLog();
+}
+
+function buildResultText(log) {
+  const wrongText = log.wrong.length
+    ? log.wrong.map((word) => `#${word.id} ${word.word}（${word.meaningZh}）`).join("、")
+    : "沒有答錯的單字";
+  return `媽媽，我完成國中2000單字20題測驗：${log.score}/100。答錯單字：${wrongText}`;
+}
+
+async function copyResultText() {
+  if (!state.currentResultText) return;
+  try {
+    await navigator.clipboard.writeText(state.currentResultText);
+    els.feedback.textContent = "結果文字已複製";
+  } catch {
+    els.feedback.textContent = state.currentResultText;
+  }
+}
+
+function shareToLine() {
+  if (!state.currentResultText) return;
+  const encoded = encodeURIComponent(state.currentResultText);
+  window.location.href = `https://line.me/R/msg/text/?${encoded}`;
+}
+
+function renderQuizLog() {
+  if (!state.quizLog.length) {
+    els.quizLogList.innerHTML = `<p class="meta">尚無 20 題測驗紀錄。</p>`;
+    return;
+  }
+  els.quizLogList.innerHTML = state.quizLog
+    .map((log) => {
+      const wrongText = log.wrong.length ? log.wrong.map((word) => `${word.word}（${word.meaningZh}）`).join("、") : "全對";
+      return `
+        <article class="log-item">
+          <strong>${esc(log.score)}/100</strong>
+          <p class="meta">${esc(log.date)}</p>
+          <p>答錯：${esc(wrongText)}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function setView(view) {
+  els.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.view === view));
+  els.views.forEach((section) => section.classList.toggle("active", section.id === `${view}View`));
+  if (view === "review") renderReview();
+  if (view === "quiz") renderQuizLog();
+}
+
+function bindEvents() {
+  els.tabs.forEach((tab) => tab.addEventListener("click", () => setView(tab.dataset.view)));
+
+  document.addEventListener("click", (event) => {
+    const speakTarget = event.target.closest("[data-speak]");
+    const hardTarget = event.target.closest("[data-mark-hard]");
+    const knownTarget = event.target.closest("[data-mark-known]");
+    const topicTarget = event.target.closest("[data-topic]");
+    const choiceTarget = event.target.closest("[data-choice]");
+    if (speakTarget) speak(speakTarget.dataset.speak);
+    if (hardTarget) {
+      updateStatus(Number(hardTarget.dataset.markHard), { hard: true, known: false });
+      renderLearn();
+      renderReview();
+    }
+    if (knownTarget) {
+      updateStatus(Number(knownTarget.dataset.markKnown), { known: true, hard: false });
+      renderLearn();
+      renderReview();
+    }
+    if (topicTarget) {
+      if (topicTarget.dataset.topicType === "learn") {
+        state.activeLearnCategory = topicTarget.dataset.topic;
+        renderLearn();
+      } else {
+        state.activeReviewCategory = topicTarget.dataset.topic;
+        state.reviewIndex = 0;
+        state.reviewFlipped = false;
+        renderReview();
+      }
+    }
+    if (choiceTarget) answerQuiz(Number(choiceTarget.dataset.choice));
+  });
+
+  els.learnCategorySelect.addEventListener("change", () => {
+    state.activeLearnCategory = els.learnCategorySelect.value;
+    renderLearn();
+  });
+
+  els.reviewCategorySelect.addEventListener("change", () => {
+    state.activeReviewCategory = els.reviewCategorySelect.value;
+    state.reviewIndex = 0;
+    state.reviewFlipped = false;
+    renderReview();
+  });
+
+  els.flipBtn.addEventListener("click", () => {
+    state.reviewFlipped = !state.reviewFlipped;
+    renderReview();
+  });
+
+  els.reviewSpeakBtn.addEventListener("click", () => {
+    const word = reviewQueue()[state.reviewIndex];
+    if (word) speak(state.reviewFlipped ? word.exampleEn : word.word);
+  });
+
+  els.reviewKeepHardBtn.addEventListener("click", () => {
+    const queue = reviewQueue();
+    if (!queue.length) return;
+    updateStatus(queue[state.reviewIndex].id, { hard: true, known: false });
+    state.reviewIndex = (state.reviewIndex + 1) % queue.length;
+    state.reviewFlipped = false;
+    renderReview();
+  });
+
+  els.reviewKnowBtn.addEventListener("click", () => {
+    const queue = reviewQueue();
+    if (!queue.length) return;
+    updateStatus(queue[state.reviewIndex].id, { known: true, hard: false });
+    state.reviewFlipped = false;
+    renderReview();
+  });
+
+  document.querySelectorAll("[data-quiz-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.quizMode = button.dataset.quizMode;
+      document.querySelectorAll("[data-quiz-mode]").forEach((item) => item.classList.toggle("active", item === button));
+      startQuiz();
+    });
+  });
+
+  els.startQuizBtn.addEventListener("click", startQuiz);
+  els.quizSpeakBtn.addEventListener("click", () => {
+    if (state.currentQuestion) speak(state.currentQuestion.word);
+  });
+  els.shareLineBtn.addEventListener("click", shareToLine);
+  els.copyResultBtn.addEventListener("click", copyResultText);
+  els.clearQuizLogBtn.addEventListener("click", () => {
+    state.quizLog = [];
+    saveQuizLog();
+    renderQuizLog();
+  });
+}
+
+async function init() {
+  bindEvents();
+  els.quizWord.textContent = "載入 2000 單字中";
+  const response = await fetch(DATA_URL);
+  const data = await response.json();
+  state.words = data.words;
+  state.categories = data.categories;
+  state.activeLearnCategory = state.categories[0]?.id || "";
+  buildOptions();
+  renderStats();
+  renderLearn();
+  renderReview();
+  renderQuizLog();
+  startQuiz();
+}
+
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.addEventListener("voiceschanged", pickAmericanVoice);
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js");
+  });
+}
+
+init().catch((error) => {
+  els.quizWord.textContent = "資料載入失敗";
+  els.feedback.textContent = error.message;
+});

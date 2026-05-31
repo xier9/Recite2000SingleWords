@@ -2,6 +2,11 @@
 
 這是一個純靜態 PWA，可直接部署到 GitHub Pages、Netlify、Vercel 或任何靜態主機。開啟後可以在 iPhone Safari 使用「加入主畫面」當作 app 學習。
 
+## 網址
+
+- 99 單字版：`https://xier9.github.io/Recite2000SingleWords/`
+- 2000 單字版：`https://xier9.github.io/Recite2000SingleWords/2000/`
+
 ## 本機預覽
 
 ```bash
