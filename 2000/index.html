@@ -10,7 +10,7 @@
     <title>國中 2000 單字</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=3" />
   </head>
   <body>
     <div class="app-shell">
@@ -123,10 +123,33 @@
             </div>
             <div id="quizLogList" class="log-list"></div>
           </section>
+
+          <section class="record-panel" aria-labelledby="recordTitle">
+            <div>
+              <h2 id="recordTitle">學習紀錄備份</h2>
+              <p>匯出已會、加強與 20 題測驗紀錄；換手機或清掉瀏覽器資料時可再匯入。</p>
+            </div>
+            <div class="button-row">
+              <button class="primary-button" id="exportRecordsBtn">匯出學習紀錄</button>
+              <button class="ghost-button" id="importRecordsBtn">匯入紀錄</button>
+            </div>
+            <input class="hidden" id="importRecordsInput" type="file" accept="application/json,.json" />
+          </section>
         </section>
       </main>
     </div>
 
-    <script src="app.js?v=3" defer></script>
+    <div class="modal-backdrop hidden" id="clearLogModal" role="dialog" aria-modal="true" aria-labelledby="clearLogTitle">
+      <div class="modal">
+        <h2 id="clearLogTitle">刪除 20 題紀錄？</h2>
+        <p>刪除後無法從這台裝置復原；可以先匯出學習紀錄備份。</p>
+        <div class="button-row">
+          <button class="danger-button" id="confirmClearLogBtn">刪除</button>
+          <button class="ghost-button" id="cancelClearLogBtn">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js?v=4" defer></script>
   </body>
 </html>

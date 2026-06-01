@@ -55,6 +55,12 @@ const els = {
   copyResultBtn: document.querySelector("#copyResultBtn"),
   clearQuizLogBtn: document.querySelector("#clearQuizLogBtn"),
   quizLogList: document.querySelector("#quizLogList"),
+  exportRecordsBtn: document.querySelector("#exportRecordsBtn"),
+  importRecordsBtn: document.querySelector("#importRecordsBtn"),
+  importRecordsInput: document.querySelector("#importRecordsInput"),
+  clearLogModal: document.querySelector("#clearLogModal"),
+  confirmClearLogBtn: document.querySelector("#confirmClearLogBtn"),
+  cancelClearLogBtn: document.querySelector("#cancelClearLogBtn"),
 };
 
 function loadJson(key, fallback) {
@@ -307,8 +313,6 @@ function startQuiz() {
     const queue = [];
     while (queue.length < 20) queue.push(...shuffle(pool));
     state.quizQueue = queue.slice(0, 20);
-    state.quizStartAt = Date.now();
-    startQuizTimer();
   } else {
     state.quizQueue = shuffle(pool);
   }
@@ -361,6 +365,10 @@ function showQuestion() {
 function answerQuiz(choiceId) {
   const word = state.currentQuestion;
   if (!word) return;
+  if (state.quizMode === "twenty" && !state.quizStartAt) {
+    state.quizStartAt = Date.now();
+    startQuizTimer();
+  }
   const correct = choiceId === word.id;
   document.querySelectorAll(".choice").forEach((button) => {
     const id = Number(button.dataset.choice);
@@ -377,6 +385,11 @@ function answerQuiz(choiceId) {
     state.quizWrong.push(word);
     updateStatus(word.id, { hard: true, known: false });
   }
+  if (state.quizMode === "twenty" && state.quizIndex >= 19) {
+    state.quizElapsedMs = Date.now() - state.quizStartAt;
+    els.quizTimer.textContent = formatDuration(state.quizElapsedMs);
+    stopQuizTimer();
+  }
   window.setTimeout(nextQuizStep, 850);
 }
 
@@ -390,7 +403,7 @@ function nextQuizStep() {
 }
 
 function finishTwentyQuiz() {
-  state.quizElapsedMs = state.quizStartAt ? Date.now() - state.quizStartAt : state.quizElapsedMs;
+  state.quizElapsedMs = state.quizElapsedMs || (state.quizStartAt ? Date.now() - state.quizStartAt : 0);
   stopQuizTimer();
   const durationText = formatDuration(state.quizElapsedMs);
   const uniqueWrong = [...new Map(state.quizWrong.map((word) => [word.id, word])).values()];
@@ -462,6 +475,119 @@ function renderQuizLog() {
       `;
     })
     .join("");
+}
+
+function exportRecords() {
+  const markedProgress = Object.fromEntries(
+    Object.entries(state.progress).filter(([, status]) => status?.known || status?.hard),
+  );
+  const payload = {
+    app: "Recite2000SingleWords",
+    type: "learning-records",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    progress: markedProgress,
+    quizLog: state.quizLog,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.download = `recite-2000-records-${date}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importRecordsFile(file) {
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const data = JSON.parse(String(reader.result));
+      if (
+        !data ||
+        data.type !== "learning-records" ||
+        !data.progress ||
+        typeof data.progress !== "object" ||
+        !Array.isArray(data.quizLog)
+      ) {
+        throw new Error("檔案格式不正確");
+      }
+      state.progress = sanitizeProgress(data.progress);
+      state.quizLog = sanitizeQuizLog(data.quizLog);
+      saveProgress();
+      saveQuizLog();
+      renderStats();
+      renderLearn();
+      renderReview();
+      renderQuizLog();
+      els.feedback.textContent = "學習紀錄已匯入";
+    } catch (error) {
+      els.feedback.textContent = `匯入失敗：${error.message}`;
+    } finally {
+      els.importRecordsInput.value = "";
+    }
+  });
+  reader.readAsText(file);
+}
+
+function sanitizeQuizLog(logs) {
+  const wordsById = new Map(state.words.map((word) => [word.id, word]));
+  return logs
+    .filter((log) => log && typeof log === "object")
+    .map((log) => {
+      const durationMs = Math.max(0, Number(log.durationMs || 0));
+      const wrong = Array.isArray(log.wrong)
+        ? log.wrong
+            .filter((word) => word && typeof word === "object")
+            .map((word) => {
+              const id = Number(word.id || 0);
+              const fallback = wordsById.get(id);
+              return {
+                id,
+                word: String(word.word || fallback?.word || ""),
+                meaningZh: String(word.meaningZh || fallback?.meaningZh || ""),
+                categoryNameZh: String(word.categoryNameZh || fallback?.categoryNameZh || ""),
+              };
+            })
+            .filter((word) => word.id && word.word && word.meaningZh)
+        : [];
+      return {
+        id: Number(log.id || Date.now()),
+        date: String(log.date || new Date().toLocaleString("zh-TW", { hour12: false })),
+        score: Math.max(0, Math.min(100, Number(log.score || 0))),
+        durationMs,
+        durationText: String(log.durationText || formatDuration(durationMs)),
+        wrong,
+      };
+    })
+    .slice(0, 100);
+}
+
+function sanitizeProgress(progress) {
+  const validIds = new Set(state.words.map((word) => String(word.id)));
+  return Object.fromEntries(
+    Object.entries(progress)
+      .filter(([id, status]) => validIds.has(String(id)) && status && (status.known || status.hard))
+      .map(([id, status]) => [
+        id,
+        {
+          known: Boolean(status.known),
+          hard: Boolean(status.hard),
+          seen: Number(status.seen || 0),
+        },
+      ]),
+  );
+}
+
+function showClearLogModal() {
+  els.clearLogModal.classList.remove("hidden");
+}
+
+function hideClearLogModal() {
+  els.clearLogModal.classList.add("hidden");
 }
 
 function setView(view) {
@@ -558,10 +684,22 @@ function bindEvents() {
   });
   els.shareLineBtn.addEventListener("click", shareToLine);
   els.copyResultBtn.addEventListener("click", copyResultText);
-  els.clearQuizLogBtn.addEventListener("click", () => {
+  els.clearQuizLogBtn.addEventListener("click", showClearLogModal);
+  els.cancelClearLogBtn.addEventListener("click", hideClearLogModal);
+  els.clearLogModal.addEventListener("click", (event) => {
+    if (event.target === els.clearLogModal) hideClearLogModal();
+  });
+  els.confirmClearLogBtn.addEventListener("click", () => {
     state.quizLog = [];
     saveQuizLog();
     renderQuizLog();
+    hideClearLogModal();
+  });
+  els.exportRecordsBtn.addEventListener("click", exportRecords);
+  els.importRecordsBtn.addEventListener("click", () => els.importRecordsInput.click());
+  els.importRecordsInput.addEventListener("change", () => {
+    const file = els.importRecordsInput.files?.[0];
+    if (file) importRecordsFile(file);
   });
 }
 
