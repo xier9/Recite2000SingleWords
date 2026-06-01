@@ -1,6 +1,7 @@
 const DATA_URL = "../data/junior-2000-vocabulary.json";
 const PROGRESS_KEY = "recite-2000-progress-v1";
 const QUIZ_LOG_KEY = "recite-2000-quiz-log-v1";
+const MAX_IMPORT_BYTES = 1024 * 1024;
 
 const state = {
   words: [],
@@ -545,6 +546,11 @@ function exportRecords() {
 }
 
 function importRecordsFile(file) {
+  if (file.size > MAX_IMPORT_BYTES) {
+    els.feedback.textContent = "匯入失敗：檔案超過 1MB，請確認是否為本 App 匯出的學習紀錄。";
+    els.importRecordsInput.value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.addEventListener("load", () => {
     try {

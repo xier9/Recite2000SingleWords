@@ -1,9 +1,9 @@
-const CACHE_NAME = "recite-2000-words-v5";
+const CACHE_NAME = "recite-2000-words-v6";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css?v=3",
-  "./app.js?v=5",
+  "./app.js?v=6",
   "./manifest.webmanifest",
   "../data/junior-2000-vocabulary.json",
   "../assets/icon-192.png",
@@ -31,11 +31,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        if (response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(event.request)),
