@@ -8,6 +8,9 @@ const state = {
   activeLearnCategory: "",
   activeReviewCategory: "all",
   reviewIndex: 0,
+  reviewDeck: [],
+  reviewDeckCursor: 0,
+  reviewDeckCategory: "",
   reviewFlipped: false,
   quizMode: "twenty",
   quizQueue: [],
@@ -259,8 +262,44 @@ function renderWordCard(word) {
   `;
 }
 
+function resetReviewDeck() {
+  state.reviewDeck = shuffle(hardWords(state.activeReviewCategory).map((word) => word.id));
+  state.reviewDeckCursor = 0;
+  state.reviewDeckCategory = state.activeReviewCategory;
+}
+
+function syncReviewDeck() {
+  if (state.reviewDeckCategory !== state.activeReviewCategory) {
+    resetReviewDeck();
+    return;
+  }
+  const currentId = state.reviewDeck[state.reviewDeckCursor];
+  const hardIds = hardWords(state.activeReviewCategory).map((word) => word.id);
+  const hardIdSet = new Set(hardIds);
+  const currentDeck = state.reviewDeck.filter((id) => hardIdSet.has(id));
+  const currentDeckSet = new Set(currentDeck);
+  const newIds = hardIds.filter((id) => !currentDeckSet.has(id));
+  state.reviewDeck = [...currentDeck, ...shuffle(newIds)];
+  const currentIndex = state.reviewDeck.indexOf(currentId);
+  if (currentIndex >= 0) state.reviewDeckCursor = currentIndex;
+  if (state.reviewDeckCursor >= state.reviewDeck.length && state.reviewDeck.length) resetReviewDeck();
+}
+
 function reviewQueue() {
-  return hardWords(state.activeReviewCategory);
+  syncReviewDeck();
+  return state.reviewDeck.map((id) => wordById(id)).filter(Boolean);
+}
+
+function currentReviewWord() {
+  const queue = reviewQueue();
+  return queue[state.reviewDeckCursor] || null;
+}
+
+function advanceReviewDeck() {
+  syncReviewDeck();
+  if (!state.reviewDeck.length) return;
+  state.reviewDeckCursor += 1;
+  if (state.reviewDeckCursor >= state.reviewDeck.length) resetReviewDeck();
 }
 
 function renderReview() {
@@ -274,9 +313,13 @@ function renderReview() {
     els.reviewFace.innerHTML = `<p class="meaning">先到學習頁把不熟的字標注為「加強」。</p>`;
     return;
   }
-  state.reviewIndex %= queue.length;
-  const word = queue[state.reviewIndex];
-  els.reviewQueueLabel.textContent = `${word.categoryNameZh} · ${state.reviewIndex + 1}/${queue.length}`;
+  let word = currentReviewWord();
+  if (!word) {
+    resetReviewDeck();
+    word = currentReviewWord();
+  }
+  if (!word) return;
+  els.reviewQueueLabel.textContent = `${word.categoryNameZh} · ${state.reviewDeckCursor + 1}/${queue.length}`;
   els.reviewFace.innerHTML = state.reviewFlipped
     ? `
       <div class="review-detail">
@@ -593,7 +636,10 @@ function hideClearLogModal() {
 function setView(view) {
   els.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.view === view));
   els.views.forEach((section) => section.classList.toggle("active", section.id === `${view}View`));
-  if (view === "review") renderReview();
+  if (view === "review") {
+    resetReviewDeck();
+    renderReview();
+  }
   if (view === "quiz") renderQuizLog();
 }
 
@@ -624,6 +670,7 @@ function bindEvents() {
       } else {
         state.activeReviewCategory = topicTarget.dataset.topic;
         state.reviewIndex = 0;
+        resetReviewDeck();
         state.reviewFlipped = false;
         renderReview();
       }
@@ -639,6 +686,7 @@ function bindEvents() {
   els.reviewCategorySelect.addEventListener("change", () => {
     state.activeReviewCategory = els.reviewCategorySelect.value;
     state.reviewIndex = 0;
+    resetReviewDeck();
     state.reviewFlipped = false;
     renderReview();
   });
@@ -649,23 +697,24 @@ function bindEvents() {
   });
 
   els.reviewSpeakBtn.addEventListener("click", () => {
-    const word = reviewQueue()[state.reviewIndex];
+    const word = currentReviewWord();
     if (word) speak(state.reviewFlipped ? word.exampleEn : word.word);
   });
 
   els.reviewKeepHardBtn.addEventListener("click", () => {
-    const queue = reviewQueue();
-    if (!queue.length) return;
-    updateStatus(queue[state.reviewIndex].id, { hard: true, known: false });
-    state.reviewIndex = (state.reviewIndex + 1) % queue.length;
+    const word = currentReviewWord();
+    if (!word) return;
+    updateStatus(word.id, { hard: true, known: false });
+    advanceReviewDeck();
     state.reviewFlipped = false;
     renderReview();
   });
 
   els.reviewKnowBtn.addEventListener("click", () => {
-    const queue = reviewQueue();
-    if (!queue.length) return;
-    updateStatus(queue[state.reviewIndex].id, { known: true, hard: false });
+    const word = currentReviewWord();
+    if (!word) return;
+    updateStatus(word.id, { known: true, hard: false });
+    syncReviewDeck();
     state.reviewFlipped = false;
     renderReview();
   });
