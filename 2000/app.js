@@ -14,6 +14,9 @@ const state = {
   quizIndex: 0,
   quizScore: 0,
   quizWrong: [],
+  quizStartAt: 0,
+  quizElapsedMs: 0,
+  quizTimerId: null,
   currentQuestion: null,
   currentResultText: "",
   progress: loadJson(PROGRESS_KEY, {}),
@@ -40,6 +43,7 @@ const els = {
   flipBtn: document.querySelector("#flipBtn"),
   quizProgress: document.querySelector("#quizProgress"),
   quizScore: document.querySelector("#quizScore"),
+  quizTimer: document.querySelector("#quizTimer"),
   quizWord: document.querySelector("#quizWord"),
   quizSpeakBtn: document.querySelector("#quizSpeakBtn"),
   choices: document.querySelector("#choices"),
@@ -90,6 +94,23 @@ function updateStatus(id, patch) {
   renderStats();
 }
 
+function categoryMarkedCount(categoryId) {
+  return wordsInCategory(categoryId).filter((word) => {
+    const status = getStatus(word.id);
+    return status.known || status.hard;
+  }).length;
+}
+
+function categoryProgressClass(categoryId) {
+  const words = wordsInCategory(categoryId);
+  if (!words.length) return "";
+  const percent = (categoryMarkedCount(categoryId) / words.length) * 100;
+  if (percent >= 100) return "progress-complete";
+  if (percent > 50) return "progress-half";
+  if (percent > 1) return "progress-started";
+  return "";
+}
+
 function wordById(id) {
   return state.words.find((word) => word.id === id);
 }
@@ -115,14 +136,28 @@ function speak(text) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "en-US";
   utterance.voice = pickAmericanVoice();
-  utterance.rate = 0.88;
-  utterance.pitch = 0.9;
+  utterance.rate = 0.79;
+  utterance.pitch = 1;
+  utterance.volume = 1;
   window.speechSynthesis.speak(utterance);
 }
 
 function pickAmericanVoice() {
   const voices = window.speechSynthesis.getVoices();
-  const preferred = ["Aaron", "Reed", "Eddy", "Fred", "Daniel", "Alex", "Google US English", "Microsoft Guy"];
+  const preferred = [
+    "Samantha",
+    "Aaron",
+    "Ava",
+    "Reed",
+    "Eddy",
+    "Allison",
+    "Tom",
+    "Alex",
+    "Google US English",
+    "Microsoft Aria",
+    "Microsoft Jenny",
+    "Microsoft Guy",
+  ];
   return (
     preferred.map((name) => voices.find((voice) => voice.lang.startsWith("en-US") && voice.name.includes(name))).find(Boolean) ||
     voices.find((voice) => voice.lang === "en-US") ||
@@ -144,11 +179,18 @@ function buildOptions() {
   const categoryOptions = state.categories
     .map((category) => {
       const count = wordsInCategory(category.id).length;
-      return `<option value="${esc(category.id)}">${esc(category.nameZh)}（${count}）</option>`;
+      const progressClass = categoryProgressClass(category.id);
+      return `<option class="${progressClass}" value="${esc(category.id)}">${esc(category.nameZh)}（${count}）</option>`;
     })
     .join("");
   els.learnCategorySelect.innerHTML = categoryOptions;
   els.reviewCategorySelect.innerHTML = `<option value="all">全部加強</option>${categoryOptions}`;
+}
+
+function applySelectProgress(select, categoryId) {
+  select.classList.remove("progress-started", "progress-half", "progress-complete");
+  const progressClass = categoryProgressClass(categoryId);
+  if (progressClass) select.classList.add(progressClass);
 }
 
 function renderStats() {
@@ -166,7 +208,8 @@ function renderTopicList(container, activeCategory, type) {
     .map((category) => {
       const baseCount = type === "review" ? hardWords(category.id).length : wordsInCategory(category.id).length;
       const active = activeCategory === category.id ? "active" : "";
-      return `<button class="topic-button ${active}" data-topic="${esc(category.id)}" data-topic-type="${type}">
+      const progressClass = categoryProgressClass(category.id);
+      return `<button class="topic-button ${active} ${progressClass}" data-topic="${esc(category.id)}" data-topic-type="${type}">
         ${esc(category.nameZh)} ${baseCount}
       </button>`;
     })
@@ -177,8 +220,10 @@ function renderTopicList(container, activeCategory, type) {
 function renderLearn() {
   const category = state.categories.find((item) => item.id === state.activeLearnCategory) || state.categories[0];
   if (!category) return;
+  buildOptions();
   state.activeLearnCategory = category.id;
   els.learnCategorySelect.value = category.id;
+  applySelectProgress(els.learnCategorySelect, category.id);
   const words = wordsInCategory(category.id);
   els.learnSubtitle.textContent = `${category.nameZh} · ${words.length} 個單字 · ${category.descriptionZh}`;
   els.wordGrid.innerHTML = words.map(renderWordCard).join("");
@@ -213,8 +258,10 @@ function reviewQueue() {
 }
 
 function renderReview() {
+  buildOptions();
   renderTopicList(els.reviewTopicList, state.activeReviewCategory, "review");
   els.reviewCategorySelect.value = state.activeReviewCategory;
+  applySelectProgress(els.reviewCategorySelect, state.activeReviewCategory);
   const queue = reviewQueue();
   if (!queue.length) {
     els.reviewQueueLabel.textContent = "目前沒有這個主題的加強單字。";
@@ -237,10 +284,14 @@ function renderReview() {
 }
 
 function startQuiz() {
+  stopQuizTimer();
   const pool = quizPool();
   state.quizWrong = [];
   state.quizScore = 0;
   state.quizIndex = 0;
+  state.quizStartAt = 0;
+  state.quizElapsedMs = 0;
+  els.quizTimer.textContent = state.quizMode === "twenty" ? "00:00" : "練習中";
   els.quizResult.classList.add("hidden");
   els.feedback.textContent = "";
   if (!pool.length) {
@@ -249,16 +300,42 @@ function startQuiz() {
     els.choices.innerHTML = "";
     els.quizProgress.textContent = "尚未有測驗字庫";
     els.quizScore.textContent = "0 分";
+    els.quizTimer.textContent = "00:00";
     return;
   }
   if (state.quizMode === "twenty") {
     const queue = [];
     while (queue.length < 20) queue.push(...shuffle(pool));
     state.quizQueue = queue.slice(0, 20);
+    state.quizStartAt = Date.now();
+    startQuizTimer();
   } else {
     state.quizQueue = shuffle(pool);
   }
   showQuestion();
+}
+
+function startQuizTimer() {
+  updateQuizTimer();
+  state.quizTimerId = window.setInterval(updateQuizTimer, 1000);
+}
+
+function stopQuizTimer() {
+  if (state.quizTimerId) window.clearInterval(state.quizTimerId);
+  state.quizTimerId = null;
+}
+
+function updateQuizTimer() {
+  if (state.quizMode !== "twenty" || !state.quizStartAt) return;
+  state.quizElapsedMs = Date.now() - state.quizStartAt;
+  els.quizTimer.textContent = formatDuration(state.quizElapsedMs);
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function showQuestion() {
@@ -313,11 +390,16 @@ function nextQuizStep() {
 }
 
 function finishTwentyQuiz() {
+  state.quizElapsedMs = state.quizStartAt ? Date.now() - state.quizStartAt : state.quizElapsedMs;
+  stopQuizTimer();
+  const durationText = formatDuration(state.quizElapsedMs);
   const uniqueWrong = [...new Map(state.quizWrong.map((word) => [word.id, word])).values()];
   const log = {
     id: Date.now(),
     date: new Date().toLocaleString("zh-TW", { hour12: false }),
     score: state.quizScore,
+    durationMs: state.quizElapsedMs,
+    durationText,
     wrong: uniqueWrong.map((word) => ({
       id: word.id,
       word: word.word,
@@ -330,6 +412,7 @@ function finishTwentyQuiz() {
   saveQuizLog();
   state.currentResultText = buildResultText(log);
   els.quizScore.textContent = `${state.quizScore} 分`;
+  els.quizTimer.textContent = durationText;
   els.quizProgress.textContent = "20 題測驗完成";
   els.quizWord.textContent = `${state.quizScore} / 100`;
   els.choices.innerHTML = "";
@@ -343,7 +426,7 @@ function buildResultText(log) {
   const wrongText = log.wrong.length
     ? log.wrong.map((word) => `#${word.id} ${word.word}（${word.meaningZh}）`).join("、")
     : "沒有答錯的單字";
-  return `媽媽，我完成國中2000單字20題測驗：${log.score}/100。答錯單字：${wrongText}`;
+  return `Hi，我完成國中2000單字20題測驗：${log.score}/100。使用時間：${log.durationText || formatDuration(log.durationMs || 0)}。答錯單字：${wrongText}`;
 }
 
 async function copyResultText() {
@@ -373,7 +456,7 @@ function renderQuizLog() {
       return `
         <article class="log-item">
           <strong>${esc(log.score)}/100</strong>
-          <p class="meta">${esc(log.date)}</p>
+          <p class="meta">${esc(log.date)} · 使用時間 ${esc(log.durationText || formatDuration(log.durationMs || 0))}</p>
           <p>答錯：${esc(wrongText)}</p>
         </article>
       `;
