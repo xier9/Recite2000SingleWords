@@ -577,7 +577,23 @@ h2 {
     min-width: 0;
   }
 
-  .stats-grid,
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .stats-grid > div {
+    padding: 10px 6px;
+  }
+
+  .stats-grid span {
+    font-size: 1.2rem;
+  }
+
+  .stats-grid p {
+    font-size: 0.78rem;
+  }
+
   .choices {
     grid-template-columns: 1fr;
   }
