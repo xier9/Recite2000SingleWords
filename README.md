@@ -4,7 +4,7 @@
 
 ## 網址
 
-- 99 單字版：`https://xier9.github.io/Recite2000SingleWords/`
+- 99 單字版（停更保留）：`https://xier9.github.io/Recite2000SingleWords/`
 - 2000 單字版：`https://xier9.github.io/Recite2000SingleWords/2000/`
 
 ## 本機預覽
@@ -13,7 +13,7 @@
 python3 -m http.server 4173
 ```
 
-- 99 單字版：`http://localhost:4173/`
+- 99 單字版（停更保留）：`http://localhost:4173/`
 - 2000 單字版：`http://localhost:4173/2000/`
 
 ## iPhone 使用
@@ -22,7 +22,9 @@ python3 -m http.server 4173
 2. 點分享按鈕，選「加入主畫面」。
 3. 從主畫面開啟後，可使用已快取的頁面與資料。
 
-## 99 單字版功能
+## 99 單字版功能（停更保留）
+
+99 單字版作為舊版入口保留，不再新增功能；後續主要維護與新功能集中在 2000 單字版。
 
 - 學習：一次顯示 5 個單字、中文、詞性、音標與例句。
 - 朗讀：點單字、播放按鈕或例句可使用英文語音朗讀。
