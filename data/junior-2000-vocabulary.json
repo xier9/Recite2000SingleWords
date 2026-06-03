@@ -13,7 +13,7 @@
       "例句已重寫為國中到高中程度，盡量採生活化或時事情境，並輪替關係子句、條件句、時間子句、讓步句、原因結果與比較等句型。"
     ],
     "ipaNeedsReviewIds": [],
-    "examplesUpdatedAt": "2026-06-03T07:50:57.778963+00:00"
+    "examplesUpdatedAt": "2026-06-03T07:54:41.155805+00:00"
   },
   "categories": [
     {
@@ -625,7 +625,7 @@
       "partOfSpeech": "n.",
       "meaningZh": "人們",
       "ipa": "/ˈpipəl/",
-      "exampleEn": "The story about a people showed how people can help each other in daily life.",
+      "exampleEn": "The story about people showed how a community can help each other in daily life.",
       "categoryId": "people_roles",
       "categoryNameZh": "人物稱謂",
       "categoryNoteZh": "先記誰是誰：人、角色、關係中的稱呼。",
@@ -8395,7 +8395,7 @@
       "partOfSpeech": "n.",
       "meaningZh": "排球",
       "ipa": "/ˈvɑliˌbɔl/",
-      "exampleEn": "Our class talked about a volleyball after watching a short video about free time.",
+      "exampleEn": "Our class talked about volleyball after watching a short video about free time.",
       "categoryId": "sports_hobbies_entertainment",
       "categoryNameZh": "運動休閒與娛樂",
       "categoryNoteZh": "球類、戶外活動、音樂、電影和興趣。",
