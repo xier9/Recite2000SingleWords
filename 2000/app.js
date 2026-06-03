@@ -1,4 +1,4 @@
-const DATA_URL = "../data/junior-2000-vocabulary.json";
+const DATA_URL = "../data/junior-2000-vocabulary.json?v=2";
 const PROGRESS_KEY = "recite-2000-progress-v1";
 const QUIZ_LOG_KEY = "recite-2000-quiz-log-v1";
 const MAX_IMPORT_BYTES = 1024 * 1024;

@@ -1,11 +1,11 @@
-const CACHE_NAME = "recite-2000-words-v7";
+const CACHE_NAME = "recite-2000-words-v8";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css?v=4",
-  "./app.js?v=6",
+  "./app.js?v=7",
   "./manifest.webmanifest",
-  "../data/junior-2000-vocabulary.json",
+  "../data/junior-2000-vocabulary.json?v=2",
   "../assets/icon-192.png",
   "../assets/icon-512.png",
   "../assets/apple-touch-icon.png",
